@@ -1,0 +1,30 @@
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: tenant-b
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: tenant-a-service
+#   namespace: tenant-a
+# spec:
+#   selector:
+#     app: tenant-a
+#   ports:
+#     - protocol: TCP
+#       port: 80
+#       targetPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-b
+  namespace: tenant-b
+spec:
+  containers:
+    - image: nginx
+      imagePullPolicy: IfNotPresent
+      name: nginx
+  restartPolicy: Always
