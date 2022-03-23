@@ -1,4 +1,4 @@
 *lol.md
 *.terraform*
 *terraform.tfstate*
-*terraform.tfvars
+# *terraform.tfvars
