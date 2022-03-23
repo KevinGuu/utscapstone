@@ -3,19 +3,8 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: tenant-a
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: tenant-a-service
-#   namespace: tenant-a
-# spec:
-#   selector:
-#     app: tenant-a
-#   ports:
-#     - protocol: TCP
-#       port: 80
-#       targetPort: 80
+  annotations:
+    cni.projectcalico.org/ipv4pools: '["pool-a-1"]'
 ---
 apiVersion: v1
 kind: Pod

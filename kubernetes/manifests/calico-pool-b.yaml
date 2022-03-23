@@ -1,0 +1,8 @@
+apiVersion: projectcalico.org/v3
+kind: IPPool
+metadata:
+  name: pool-b-1
+spec:
+  cidr: 10.2.0.0/24
+  ipipMode: Always
+  natOutgoing: true

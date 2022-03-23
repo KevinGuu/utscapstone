@@ -21,7 +21,7 @@ variable "gke_num_nodes" {
   description = "number of gke nodes"
 }
 
-variable "vpc_cidr" {}
+variable "subnet_1_cidr" {}
 
 variable "kube_pod_cidr" {}
 
