@@ -1,0 +1,18 @@
+{
+  "hosts": [
+    "cluster.local"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "AU",
+      "L": "Sydney",
+      "O": "Capstone",
+      "OU": "Capstone",
+      "ST": "NSW"
+    }
+  ]
+}

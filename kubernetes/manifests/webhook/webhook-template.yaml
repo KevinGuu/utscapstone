@@ -1,0 +1,24 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration 
+metadata:
+  name: capstone-webhook
+webhooks:
+  - name: capstone-webhook.default.svc.cluster.local
+    admissionReviewVersions:
+      - "v1beta1"
+    sideEffects: "None"
+    namespaceSelector:
+      matchLabels:
+        sidecar-injector: "enabled"
+    clientConfig:
+      service:
+        name: capstone-webhook
+        namespace: default
+        path: "/mutate"
+      caBundle: ${CA_BUNDLE}
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+

@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: capstone-webhook
+  labels:
+    app: capstone-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: capstone-webhook
+  template:
+    metadata:
+      labels:
+        app: capstone-webhook
+    spec:
+      serviceAccountName: capstone-webhook
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1234
+      containers:
+        - name: capstone-webhook-server
+          image: kevinygu/capstone-webhook:0.0.1
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8443
+            name: tls
+          - containerPort: 80
+            name: metrics
+          volumeMounts:
+          - name: webhook-tls-certs
+            mountPath: /etc/webhook/certs/
+            readOnly: true
+      volumes:
+      - name: webhook-tls-certs
+        secret:
+          secretName: capstone-webhook-tls
