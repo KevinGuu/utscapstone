@@ -1,37 +1,37 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: capstone-webhook
+  name: webhook-enforce-ip-range
   labels:
-    app: capstone-webhook
+    app: webhook-enforce-ip-range
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: capstone-webhook
+      app: webhook-enforce-ip-range
   template:
     metadata:
       labels:
-        app: capstone-webhook
+        app: webhook-enforce-ip-range
     spec:
-      serviceAccountName: capstone-webhook
+      serviceAccountName: webhook-enforce-ip-range
       securityContext:
         runAsNonRoot: true
         runAsUser: 1234
       containers:
-        - name: capstone-webhook-server
+        - name: webhook-enforce-ip-range-server
           image: kevinygu/capstone-webhook:0.0.1
           imagePullPolicy: Always
           ports:
-          - containerPort: 8443
-            name: tls
           - containerPort: 80
             name: metrics
+          - containerPort: 8443
+            name: tls
           volumeMounts:
-          - name: webhook-tls-certs
+          - name: tls-certs
             mountPath: /etc/webhook/certs/
             readOnly: true
       volumes:
-      - name: webhook-tls-certs
+      - name: tls-certs
         secret:
-          secretName: capstone-webhook-tls
+          secretName: webhook-tls

@@ -23,20 +23,20 @@ cfssl gencert \
   -ca=/tmp/ca.pem \
   -ca-key=/tmp/ca-key.pem \
   -config=./tls_cert/ca-config.json \
-  -hostname="capstone,capstone-webhook.default.svc.cluster.local,capstone-webhook.default.svc,localhost,127.0.0.1" \
+  -hostname="webhook-enforce-ip-range,webhook-enforce-ip-range.default.svc.cluster.local,webhook-enforce-ip-range.default.svc,localhost,127.0.0.1" \
   -profile=default \
-  ./tls_cert/ca-csr.json | cfssljson -bare /tmp/capstone-webhook
+  ./tls_cert/ca-csr.json | cfssljson -bare /tmp/webhook-enforce-ip-range
 
 # create a Kube secret storing the tls cert / key
 cat <<EOF > ./kubernetes/manifests/webhook/secret-capstone-webhook-tls.yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: capstone-webhook-tls
+  name: webhook-tls
 type: Opaque
 data:
-  tls.crt: $(cat /tmp/capstone-webhook.pem | base64 | tr -d '\n')
-  tls.key: $(cat /tmp/capstone-webhook-key.pem | base64 | tr -d '\n') 
+  tls.crt: $(cat /tmp/webhook-enforce-ip-range.pem | base64 | tr -d '\n')
+  tls.key: $(cat /tmp/webhook-enforce-ip-range-key.pem | base64 | tr -d '\n') 
 EOF
 
 # generate CA Bundle + inject into template

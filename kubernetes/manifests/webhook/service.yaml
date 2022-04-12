@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: capstone-webhook
+  name: webhook-enforce-ip-range
   labels:
-    app: capstone-webhook
+    app: webhook-enforce-ip-range
 spec:
   selector:
-    app: capstone-webhook
+    app: webhook-enforce-ip-range
   ports:
-  - port: 443
-    targetPort: tls
-    name: application
   - port: 80
     targetPort: metrics
     name: metrics
+  - port: 443
+    targetPort: tls
+    name: application
