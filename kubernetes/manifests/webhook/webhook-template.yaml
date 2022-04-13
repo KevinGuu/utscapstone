@@ -1,5 +1,5 @@
 apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration 
+kind: MutatingWebhookConfiguration
 metadata:
   name: webhook-enforce-ip-range
 webhooks:
@@ -21,4 +21,3 @@ webhooks:
         apiGroups: [""]
         apiVersions: ["v1"]
         resources: ["pods"]
-

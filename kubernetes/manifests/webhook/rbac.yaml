@@ -9,18 +9,18 @@ kind: ClusterRole
 metadata:
   name: webhook-enforce-ip-range
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["pods","namespaces"]
+    verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: webhook-enforce-ip-range
 subjects:
-- kind: ServiceAccount
-  name: webhook-enforce-ip-range
-  namespace: default
+  - kind: ServiceAccount
+    name: webhook-enforce-ip-range
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: webhook-enforce-ip-range

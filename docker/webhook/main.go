@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 
 	"k8s.io/api/admission/v1beta1"
+	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -98,7 +100,7 @@ func main() {
 }
 
 func HandleMutate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("----- Incoming /mutate request")
+	fmt.Println("----- Incoming request to /mutate")
 
 	// read request and write it to /tmp/request
 	body, _ := ioutil.ReadAll(r.Body)
@@ -106,6 +108,7 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err.Error())
 	}
+	fmt.Println("Wrote request to /tmp/request")
 
 	// demarshal requset to AdmissionReview object, handle errors
 	var admissionReviewReq v1beta1.AdmissionReview
@@ -117,30 +120,32 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 		errors.New("Malformed admission review: request is nil")
 	}
 
-	// print metadata to stdout
+	// print Request metadata to stdout
 	fmt.Println("Request Kind:", admissionReviewReq.Request.Kind)
 	fmt.Println("Request Operation:", admissionReviewReq.Request.Operation)
 	fmt.Println("Request Name:", admissionReviewReq.Request.Name)
 	fmt.Println("Request Namespace:", admissionReviewReq.Request.Namespace)
 
-	// get NS labels
+	// get NS labels, check if cidr-range in labels list, if so, parse and get range
 	ns := admissionReviewReq.Request.Namespace
 	ptrNs, err := clientSet.CoreV1().Namespaces().Get(context.TODO(), ns, metav1.GetOptions{})
-	fmt.Println("Namespace name:", ptrNs.ObjectMeta.Name)
+	if err != nil {
+		panic(err.Error())
+	}
 	annotations := ptrNs.ObjectMeta.Annotations
-	for k, v := range annotations {
-		fmt.Println(k, v)
+	if v, found := annotations["cidr-range"]; found {
+		fmt.Println("cidr-range in annotations, range is: ", v)
 	}
 
-	// var pod apiv1.Pod
+	// parse from admissionreviewreq to pod object
+	var pod apiv1.Pod
+	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &pod)
+	if err != nil {
+		fmt.Errorf("Could not unmarshal pod on admission request: %v", err)
+	}
 
-	// err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &pod)
-
-	// if err != nil {
-	// 	fmt.Errorf("Could not unmarshal pod on admission request: %v", err)
-	// }
-
-	// var patches []patchOperation
+	// create and apply container injection patch
+	var patches []patchOperation
 
 	// labels := pod.ObjectMeta.Labels
 	// labels["example-webhook"] = "it-worked"

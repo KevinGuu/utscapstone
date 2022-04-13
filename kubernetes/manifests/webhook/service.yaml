@@ -8,9 +8,9 @@ spec:
   selector:
     app: webhook-enforce-ip-range
   ports:
-  - port: 80
-    targetPort: metrics
-    name: metrics
-  - port: 443
-    targetPort: tls
-    name: application
+    - port: 80
+      targetPort: metrics
+      name: metrics
+    - port: 443
+      targetPort: tls
+      name: application

@@ -23,15 +23,15 @@ spec:
           image: kevinygu/capstone-webhook:0.0.1
           imagePullPolicy: Always
           ports:
-          - containerPort: 80
-            name: metrics
-          - containerPort: 8443
-            name: tls
+            - containerPort: 80
+              name: metrics
+            - containerPort: 8443
+              name: tls
           volumeMounts:
-          - name: tls-certs
-            mountPath: /etc/webhook/certs/
-            readOnly: true
+            - name: tls-certs
+              mountPath: /etc/webhook/certs/
+              readOnly: true
       volumes:
-      - name: tls-certs
-        secret:
-          secretName: webhook-tls
+        - name: tls-certs
+          secret:
+            secretName: webhook-tls
