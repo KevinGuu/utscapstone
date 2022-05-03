@@ -31,7 +31,16 @@ spec:
             - name: tls-certs
               mountPath: /etc/webhook/certs/
               readOnly: true
+            - name: webhook-config
+              mountPath: /etc/webhook/config
+          resources:
+             limits:
+              memory: 128Mi
+              cpu: 500m
       volumes:
         - name: tls-certs
           secret:
             secretName: webhook-tls
+        - name: webhook-config
+          configMap:
+            name: webhook-enforce-ip-range-cm

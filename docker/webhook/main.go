@@ -7,14 +7,15 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 
-	"k8s.io/api/admission/v1beta1"
-	apiv1 "k8s.io/api/core/v1"
+	yaml "gopkg.in/yaml.v2"
+
+	admissionv1 "k8s.io/api/admission/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -38,12 +39,19 @@ type patchOperation struct {
 
 var parameters ServerParameters
 
+var sidecarConfigFile string
 var (
 	universalDeserializer = serializer.NewCodecFactory(runtime.NewScheme()).UniversalDeserializer()
 )
 
 var config *rest.Config
 var clientSet *kubernetes.Clientset
+
+type Config struct {
+	Container []corev1.Container `yaml:"containers"`
+	// PodSpec         []corev1.PodSpec `yaml:"containers"`
+	// SecurityContext []corev1.SecurityContext `yaml:"securityContext"`
+}
 
 func main() {
 	useKubeConfig := os.Getenv("USE_KUBECONFIG")
@@ -52,6 +60,7 @@ func main() {
 	flag.IntVar(&parameters.port, "port", 8443, "Webhook server port.")
 	flag.StringVar(&parameters.certFile, "tlsCertFile", "/etc/webhook/certs/tls.crt", "File containing the x509 Certificate for HTTPS.")
 	flag.StringVar(&parameters.keyFile, "tlsKeyFile", "/etc/webhook/certs/tls.key", "File containing the x509 private key to --tlsCertFile.")
+	flag.StringVar(&sidecarConfigFile, "sidecar-config-file", "/etc/webhook/config/sidecarconfig.yaml", "Sidecar injector configuration file.")
 	flag.Parse()
 
 	if len(useKubeConfig) == 0 {
@@ -88,30 +97,25 @@ func main() {
 	}
 	clientSet = cs
 
-	pods, err := clientSet.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
+	// pods, err := clientSet.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	// if err != nil {
+	// 	panic(err.Error())
+	// }
+	// fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
 
 	fmt.Println("Now listening on the /mutate endpoint")
 	http.HandleFunc("/mutate", HandleMutate)
-	log.Fatal(http.ListenAndServeTLS(":"+strconv.Itoa(parameters.port), parameters.certFile, parameters.keyFile, nil))
+	http.ListenAndServeTLS(":"+strconv.Itoa(parameters.port), parameters.certFile, parameters.keyFile, nil)
 }
 
 func HandleMutate(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("----- Incoming request to /mutate")
 
-	// read request and write it to /tmp/request
+	// read request
 	body, _ := ioutil.ReadAll(r.Body)
-	err := ioutil.WriteFile("/tmp/request", body, 0644)
-	if err != nil {
-		panic(err.Error())
-	}
-	fmt.Println("Wrote request to /tmp/request")
 
 	// demarshal requset to AdmissionReview object, handle errors
-	var admissionReviewReq v1beta1.AdmissionReview
+	var admissionReviewReq admissionv1.AdmissionReview
 	if _, _, err := universalDeserializer.Decode(body, nil, &admissionReviewReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Errorf("Could not deserialize request: %v", err)
@@ -119,12 +123,10 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		errors.New("Malformed admission review: request is nil")
 	}
+	fmt.Println("Demarshaled request to AdmissionReview object")
 
 	// print Request metadata to stdout
-	fmt.Println("Request Kind:", admissionReviewReq.Request.Kind)
-	fmt.Println("Request Operation:", admissionReviewReq.Request.Operation)
-	fmt.Println("Request Name:", admissionReviewReq.Request.Name)
-	fmt.Println("Request Namespace:", admissionReviewReq.Request.Namespace)
+	fmt.Println("Request Kind:", admissionReviewReq.Request.Kind, "Request Operation:", admissionReviewReq.Request.Operation, "Request Name:", admissionReviewReq.Request.Name, "Request Namespace:", admissionReviewReq.Request.Namespace)
 
 	// get NS labels, check if cidr-range in labels list, if so, parse and get range
 	ns := admissionReviewReq.Request.Namespace
@@ -134,48 +136,87 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 	}
 	annotations := ptrNs.ObjectMeta.Annotations
 	if v, found := annotations["cidr-range"]; found {
-		fmt.Println("cidr-range in annotations, range is: ", v)
+		fmt.Println("Found cidr-range in annotations, range is: ", v)
+	} else {
+		panic(err.Error())
 	}
 
 	// parse from admissionreviewreq to pod object
-	var pod apiv1.Pod
-	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &pod)
-	if err != nil {
-		fmt.Errorf("Could not unmarshal pod on admission request: %v", err)
-	}
+	// var pod corev1.Pod
+	// err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &pod)
+	// if err != nil {
+	// 	fmt.Errorf("Could not unmarshal pod on admission request: %v", err)
+	// }
+	// fmt.Println("Parsed AdmissionReview to pod object")
+
+	// load sidecar config from mounted file
+	sidecarConfig, err := loadConfig(sidecarConfigFile)
+	fmt.Println("Loaded sidecar config")
+
+	sidecarConfig.Container[0].Env[0].Value = annotations["cidr-range"]
+
+	pp := corev1.PullPolicy("Always")
+	sidecarConfig.Container[0].ImagePullPolicy = pp
+
+	sc := corev1.SecurityContext{}
+	c := corev1.Capabilities{}
+	c.Add = []corev1.Capability{"NET_ADMIN", "NET_RAW"}
+	sc.Capabilities = &c
+	sidecarConfig.Container[0].SecurityContext = &sc
+
+	fmt.Println(sidecarConfig)
 
 	// create and apply container injection patch
 	var patches []patchOperation
 
-	// labels := pod.ObjectMeta.Labels
-	// labels["example-webhook"] = "it-worked"
+	patches = append(patches, patchOperation{
+		Op:    "add",
+		Path:  "/spec/containers/-",
+		Value: sidecarConfig.Container[0],
+	})
 
-	// patches = append(patches, patchOperation{
-	// 	Op:    "add",
-	// 	Path:  "/metadata/labels",
-	// 	Value: labels,
-	// })
+	patches = append(patches, patchOperation{
+		Op:    "add",
+		Path:  "/spec/shareProcessNamespace/",
+		Value: true,
+	})
 
-	// patchBytes, err := json.Marshal(patches)
+	patchBytes, err := json.Marshal(patches)
 
-	// if err != nil {
-	// 	fmt.Errorf("could not marshal JSON patch: %v", err)
-	// }
+	if err != nil {
+		fmt.Errorf("could not marshal JSON patch: %v", err)
+	}
 
-	// admissionReviewResponse := v1beta1.AdmissionReview{
-	// 	Response: &v1beta1.AdmissionResponse{
-	// 		UID:     admissionReviewReq.Request.UID,
-	// 		Allowed: true,
-	// 	},
-	// }
+	// response
+	admissionReviewResponse := admissionv1.AdmissionReview{
+		Response: &admissionv1.AdmissionResponse{
+			UID:     admissionReviewReq.Request.UID,
+			Allowed: true,
+		},
+	}
 
-	// admissionReviewResponse.Response.Patch = patchBytes
+	admissionReviewResponse.Response.Patch = patchBytes
 
-	// bytes, err := json.Marshal(&admissionReviewResponse)
-	// if err != nil {
-	// 	fmt.Errorf("marshaling response: %v", err)
-	// }
+	bytes, err := json.Marshal(&admissionReviewResponse)
+	if err != nil {
+		fmt.Errorf("marshaling response: %v", err)
+	}
 
-	// w.Write(bytes)
+	w.Write(bytes)
 
+}
+
+func loadConfig(configFile string) (*Config, error) {
+	// read configfile from flag var into data as bytes
+	data, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// unmarshal data bytes into config struct
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
 }

@@ -9,8 +9,11 @@
 ## 3. Deploy `RBAC components (SA, CR & CRB)` for the deployment
 `kubectl apply -f rbac.yaml`
 
-## 4. Deploy `Deployment` (webhook server)
+## 4. Deploy `Configmap` for the sidecar container
+`kubectl apply -f configmap-sidecar.yaml`
+
+## 5. Deploy `Deployment` (webhook server)
 `kubectl apply -f deployment.yaml`
 
-## 5. Deploy `MutatingWebhookConfiguration`
+## 6. Deploy `MutatingWebhookConfiguration`
 `kubectl apply -f webhook.yaml`

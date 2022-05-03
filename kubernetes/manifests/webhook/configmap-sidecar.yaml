@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webhook-enforce-ip-range-cm
+data:
+  sidecarconfig.yaml: |
+    containers:
+    - name: iptables-sidecar
+      image: kevinygu/capstone-sidecar:0.0.1
+      imagePullPolicy: Always
+      securityContext:
+        capabilities:
+          add: ["NET_ADMIN", "NET_RAW"]
+      env:
+      - name: ip_range_ns
+        value: REPLACE
+      - name: ip_range_cluster
+        value: 10.0.0.0/16
+    # policy: enabled
+    
