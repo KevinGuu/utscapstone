@@ -142,22 +142,28 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// parse from admissionreviewreq to pod object
-	// var pod corev1.Pod
-	// err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &pod)
-	// if err != nil {
-	// 	fmt.Errorf("Could not unmarshal pod on admission request: %v", err)
-	// }
-	// fmt.Println("Parsed AdmissionReview to pod object")
+	var pod corev1.Pod
+	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &pod)
+	if err != nil {
+		fmt.Errorf("Could not unmarshal pod on admission request: %v", err)
+	}
+	fmt.Println("Parsed AdmissionReview to pod object")
 
 	// load sidecar config from mounted file
 	sidecarConfig, err := loadConfig(sidecarConfigFile)
 	fmt.Println("Loaded sidecar config")
+	fmt.Println(sidecarConfig)
 
+	// set env var
 	sidecarConfig.Container[0].Env[0].Value = annotations["cidr-range"]
+	fmt.Println(sidecarConfig)
 
+	// set imagepullpolicy
 	pp := corev1.PullPolicy("Always")
 	sidecarConfig.Container[0].ImagePullPolicy = pp
+	fmt.Println(sidecarConfig)
 
+	// add Linux capabilities
 	sc := corev1.SecurityContext{}
 	c := corev1.Capabilities{}
 	c.Add = []corev1.Capability{"NET_ADMIN", "NET_RAW"}
@@ -175,11 +181,11 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 		Value: sidecarConfig.Container[0],
 	})
 
-	patches = append(patches, patchOperation{
-		Op:    "add",
-		Path:  "/spec/shareProcessNamespace/",
-		Value: true,
-	})
+	// patches = append(patches, patchOperation{
+	// 	Op:    "add",
+	// 	Path:  "/spec/shareProcessNamespace/",
+	// 	Value: true,
+	// })
 
 	patchBytes, err := json.Marshal(patches)
 

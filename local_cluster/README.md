@@ -9,7 +9,7 @@
 
 ## Install Calico
 1. Install required CRD
-`kubectl create -f tigera-operator.yaml`
+`kubectl create -f https://projectcalico.docs.tigera.io/manifests/tigera-operator.yaml`
 2. Intall Calico
 `kubectl create -f calico.yaml`
 

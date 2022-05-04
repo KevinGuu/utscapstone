@@ -4,5 +4,6 @@ metadata:
   name: pool-a-1
 spec:
   cidr: 10.1.0.0/24
+  # blockSize : 26
   ipipMode: Always
   natOutgoing: true

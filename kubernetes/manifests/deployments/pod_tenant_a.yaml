@@ -11,7 +11,7 @@ metadata:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-a
+  name: tenant-a
   namespace: tenant-a
 spec:
   containers:
@@ -24,4 +24,7 @@ spec:
       limits:
         memory: 128Mi
         cpu: 500m
+    securityContext:
+      capabilities:
+        add: ["NET_ADMIN", "NET_RAW"]
   restartPolicy: Always
