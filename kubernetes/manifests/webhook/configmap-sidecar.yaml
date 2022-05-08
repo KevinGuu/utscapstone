@@ -4,11 +4,12 @@ metadata:
   name: webhook-enforce-ip-range-cm
 data:
   sidecarconfig.yaml: |
-    containers:
+    initContainers:
     - name: iptables-sidecar
       image: kevinygu/capstone-sidecar:0.0.1
       imagePullPolicy: Always
       securityContext:
+        privileged: true
         capabilities:
           add: ["NET_ADMIN", "NET_RAW"]
       env:

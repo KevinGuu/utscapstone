@@ -37,21 +37,21 @@ type patchOperation struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
+type Config struct {
+	Container []corev1.Container `yaml:"initContainers"`
+}
+
 var parameters ServerParameters
 
 var sidecarConfigFile string
+
 var (
 	universalDeserializer = serializer.NewCodecFactory(runtime.NewScheme()).UniversalDeserializer()
 )
 
 var config *rest.Config
-var clientSet *kubernetes.Clientset
 
-type Config struct {
-	Container []corev1.Container `yaml:"containers"`
-	// PodSpec         []corev1.PodSpec `yaml:"containers"`
-	// SecurityContext []corev1.SecurityContext `yaml:"securityContext"`
-}
+var clientSet *kubernetes.Clientset
 
 func main() {
 	useKubeConfig := os.Getenv("USE_KUBECONFIG")
@@ -114,22 +114,27 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 	// read request
 	body, _ := ioutil.ReadAll(r.Body)
 
+	err := ioutil.WriteFile("/tmp/request", body, 0644)
+	if err != nil {
+		panic(err.Error())
+	}
+
 	// demarshal requset to AdmissionReview object, handle errors
-	var admissionReviewReq admissionv1.AdmissionReview
-	if _, _, err := universalDeserializer.Decode(body, nil, &admissionReviewReq); err != nil {
+	var admissionReview admissionv1.AdmissionReview
+	if _, _, err := universalDeserializer.Decode(body, nil, &admissionReview); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Errorf("Could not deserialize request: %v", err)
-	} else if admissionReviewReq.Request == nil {
+	} else if admissionReview.Request == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		errors.New("Malformed admission review: request is nil")
 	}
 	fmt.Println("Demarshaled request to AdmissionReview object")
 
 	// print Request metadata to stdout
-	fmt.Println("Request Kind:", admissionReviewReq.Request.Kind, "Request Operation:", admissionReviewReq.Request.Operation, "Request Name:", admissionReviewReq.Request.Name, "Request Namespace:", admissionReviewReq.Request.Namespace)
+	fmt.Println("Request Kind:", admissionReview.Request.Kind, "Request Operation:", admissionReview.Request.Operation, "Request Name:", admissionReview.Request.Name, "Request Namespace:", admissionReview.Request.Namespace)
 
 	// get NS labels, check if cidr-range in labels list, if so, parse and get range
-	ns := admissionReviewReq.Request.Namespace
+	ns := admissionReview.Request.Namespace
 	ptrNs, err := clientSet.CoreV1().Namespaces().Get(context.TODO(), ns, metav1.GetOptions{})
 	if err != nil {
 		panic(err.Error())
@@ -141,35 +146,25 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 		panic(err.Error())
 	}
 
-	// parse from admissionreviewreq to pod object
-	var pod corev1.Pod
-	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &pod)
-	if err != nil {
-		fmt.Errorf("Could not unmarshal pod on admission request: %v", err)
-	}
-	fmt.Println("Parsed AdmissionReview to pod object")
-
 	// load sidecar config from mounted file
 	sidecarConfig, err := loadConfig(sidecarConfigFile)
 	fmt.Println("Loaded sidecar config")
-	fmt.Println(sidecarConfig)
 
 	// set env var
 	sidecarConfig.Container[0].Env[0].Value = annotations["cidr-range"]
-	fmt.Println(sidecarConfig)
 
 	// set imagepullpolicy
 	pp := corev1.PullPolicy("Always")
 	sidecarConfig.Container[0].ImagePullPolicy = pp
-	fmt.Println(sidecarConfig)
 
 	// add Linux capabilities
 	sc := corev1.SecurityContext{}
 	c := corev1.Capabilities{}
 	c.Add = []corev1.Capability{"NET_ADMIN", "NET_RAW"}
 	sc.Capabilities = &c
+	isPrivileged := bool(true)
+	sc.Privileged = &isPrivileged
 	sidecarConfig.Container[0].SecurityContext = &sc
-
 	fmt.Println(sidecarConfig)
 
 	// create and apply container injection patch
@@ -177,39 +172,29 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 
 	patches = append(patches, patchOperation{
 		Op:    "add",
-		Path:  "/spec/containers/-",
-		Value: sidecarConfig.Container[0],
+		Path:  "/spec/initContainers",
+		Value: sidecarConfig.Container,
 	})
 
-	// patches = append(patches, patchOperation{
-	// 	Op:    "add",
-	// 	Path:  "/spec/shareProcessNamespace/",
-	// 	Value: true,
-	// })
-
 	patchBytes, err := json.Marshal(patches)
-
 	if err != nil {
 		fmt.Errorf("could not marshal JSON patch: %v", err)
 	}
 
-	// response
 	admissionReviewResponse := admissionv1.AdmissionReview{
 		Response: &admissionv1.AdmissionResponse{
-			UID:     admissionReviewReq.Request.UID,
+			UID:     admissionReview.Request.UID,
 			Allowed: true,
 		},
 	}
 
 	admissionReviewResponse.Response.Patch = patchBytes
-
 	bytes, err := json.Marshal(&admissionReviewResponse)
 	if err != nil {
 		fmt.Errorf("marshaling response: %v", err)
 	}
 
 	w.Write(bytes)
-
 }
 
 func loadConfig(configFile string) (*Config, error) {
