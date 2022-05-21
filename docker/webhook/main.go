@@ -97,24 +97,16 @@ func main() {
 	}
 	clientSet = cs
 
-	// pods, err := clientSet.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-	// fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
-
 	fmt.Println("Now listening on the /mutate endpoint")
-	http.HandleFunc("/mutate", HandleMutate)
+	http.HandleFunc("/mutate", handleMutate)
 	http.ListenAndServeTLS(":"+strconv.Itoa(parameters.port), parameters.certFile, parameters.keyFile, nil)
 }
 
-func HandleMutate(w http.ResponseWriter, r *http.Request) {
+func handleMutate(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("----- Incoming request to /mutate")
 
-	// read request
-	body, _ := ioutil.ReadAll(r.Body)
-
-	err := ioutil.WriteFile("/tmp/request", body, 0644)
+	// read request bytes to body
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -169,7 +161,6 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 
 	// create and apply container injection patch
 	var patches []patchOperation
-
 	patches = append(patches, patchOperation{
 		Op:    "add",
 		Path:  "/spec/initContainers",
@@ -178,7 +169,7 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 
 	patchBytes, err := json.Marshal(patches)
 	if err != nil {
-		fmt.Errorf("could not marshal JSON patch: %v", err)
+		fmt.Errorf("Could not marshal JSON patch: %v", err)
 	}
 
 	admissionReviewResponse := admissionv1.AdmissionReview{
@@ -191,7 +182,7 @@ func HandleMutate(w http.ResponseWriter, r *http.Request) {
 	admissionReviewResponse.Response.Patch = patchBytes
 	bytes, err := json.Marshal(&admissionReviewResponse)
 	if err != nil {
-		fmt.Errorf("marshaling response: %v", err)
+		fmt.Errorf("Couldn't marshaling the admission response: %v", err)
 	}
 
 	w.Write(bytes)

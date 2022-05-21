@@ -5,11 +5,11 @@ WORKDIR /app
 
 # prod env
 FROM dev-env as build-env
+
 COPY go.mod /go.sum /app/
 RUN go mod download
 
 COPY . /app/
-
 RUN CGO_ENABLED=0 go build -o /webhook
 
 FROM alpine:latest as runtime

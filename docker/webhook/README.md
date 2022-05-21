@@ -9,14 +9,13 @@ To build the Docker container, follow the below steps.
 cd utscapstone/docker/webhook
 docker build . -t kevinygu/capstone-webhook:0.0.1
 docker push kevinygu/capstone-webhook:0.0.1
-docker build . -t webhook
 
-2. Define main module
+Define main module
 go mod init webhook
 
-3. Build binary
+Build binary
 go build webhook
 
-
+Local testing command
 docker run -it --rm --net host -v ${HOME}/.kube/:/root/.kube/ -v ${PWD}:/app webhook sh
 ```

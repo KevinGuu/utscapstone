@@ -1,8 +1,0 @@
-apiVersion: projectcalico.org/v3
-kind: IPPool
-metadata:
-  name: {{ .Values.tenant.name }}
-spec:
-  cidr: {{ .Values.tenant.ipPoolCIDR }}
-  ipipMode: Always
-  natOutgoing: true

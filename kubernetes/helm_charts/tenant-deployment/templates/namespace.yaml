@@ -1,7 +1,0 @@
----
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: {{ .Values.tenant.name }}
-  annotations:
-    cni.projectcalico.org/ipv4pools: '["{{ .Values.tenant.name }}"]'

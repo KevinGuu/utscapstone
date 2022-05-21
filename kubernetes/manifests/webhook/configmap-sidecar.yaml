@@ -16,6 +16,4 @@ data:
       - name: ip_range_ns
         value: REPLACE
       - name: ip_range_cluster
-        value: 10.0.0.0/8
-    # policy: enabled
-    
+        value: 10.0.0.0/8   

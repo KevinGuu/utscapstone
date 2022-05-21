@@ -41,10 +41,12 @@ def main():
 
     print("Input chain rules:")
     for rule in chain_input.rules:
-        print(f"----- Proto: {rule.protocol} src: {rule.src} dst: {rule.dst} target: {rule.target.name}")
+        print(
+            f"----- Proto: {rule.protocol} src: {rule.src} dst: {rule.dst} target: {rule.target.name}")
     print("Output chain rules:")
     for rule in chain_output.rules:
-        print(f"----- Proto: {rule.protocol} src: {rule.src} dst: {rule.dst} target: {rule.target.name}")
+        print(
+            f"----- Proto: {rule.protocol} src: {rule.src} dst: {rule.dst} target: {rule.target.name}")
 
 
 if __name__ == "__main__":

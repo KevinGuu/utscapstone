@@ -1,9 +1,8 @@
 apiVersion: projectcalico.org/v3
 kind: IPPool
 metadata:
-  name: pool-a-1
+  name: pool-tenant-a
 spec:
   cidr: 10.1.0.0/24
-  # blockSize : 26
   ipipMode: Always
   natOutgoing: true
