@@ -3,9 +3,9 @@ apiVersion: v1
 metadata:
   name: tenant-a
   labels:
-    sidecar-injector: "enabled"
+    iptables-init-injector: "enabled"
   annotations:
-    cni.projectcalico.org/ipv4pools: '["pool-a-1"]'
+    cni.projectcalico.org/ipv4pools: "['pool-a-1']"
     cidr-range: '10.1.0.0/24'
 ---
 apiVersion: v1
@@ -24,7 +24,4 @@ spec:
       limits:
         memory: 128Mi
         cpu: 500m
-    securityContext:
-      capabilities:
-        add: ["NET_ADMIN", "NET_RAW"]
   restartPolicy: Always
